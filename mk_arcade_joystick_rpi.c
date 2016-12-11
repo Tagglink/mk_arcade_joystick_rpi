@@ -399,7 +399,7 @@ static void mk_teensy_input_report(struct mk_pad * pad, unsigned char * data) {
 
 	// send button data to input device
 	for (j = 4; j < mk_teensy_input_bytes; j++) {
-		input_report_key(dev, gp_dualstick_buttons[j - 4], data[j]);
+		input_report_key(dev, mk_teensy_buttons[j - 4], data[j]);
 	}
 	input_sync(dev);
 }
@@ -588,20 +588,20 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		i2c_init();
 		udelay(1000);
 		// Put all GPIOA inputs on MCP23017 in INPUT mode
-		i2c_write(pad->mcp23017addr, MPC23017_GPIOA_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOA_MODE, &FF, 1);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode
-		i2c_write(pad->mcp23017addr, MPC23017_GPIOA_PULLUPS_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOA_PULLUPS_MODE, &FF, 1);
 		udelay(1000);
 		// Put all GPIOB inputs on MCP23017 in INPUT mode
-		i2c_write(pad->mcp23017addr, MPC23017_GPIOB_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_MODE, &FF, 1);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode
-		i2c_write(pad->mcp23017addr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode a second time
 		// Known bug : if you remove this line, you will not have pullups on GPIOB 
-		i2c_write(pad->mcp23017addr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
 		udelay(1000);
 	}
 	else { // if teensy, the pin setup is already done in the teensy script
