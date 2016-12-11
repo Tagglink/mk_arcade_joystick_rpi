@@ -359,7 +359,7 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 	 */
 	char result[6];
 
-	i2c_read(pad->i2caddr, result, 6);
+	i2c_read(pad->i2caddr, NULL, result, 6);
 
 	// read the first four bytes as axes
 	for (i = 0; i < mk_teensy_axis_count; i++) {
