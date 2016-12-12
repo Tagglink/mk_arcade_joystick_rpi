@@ -39,7 +39,7 @@
 
 
 MODULE_AUTHOR("Matthieu Proucelle");
-MODULE_DESCRIPTION("GPIO and MCP23017 Arcade Joystick Driver");
+MODULE_DESCRIPTION("GPIO, MCP23017 and Teensy Arcade Joystick Driver");
 MODULE_LICENSE("GPL");
 
 #define MK_MAX_DEVICES		9
@@ -119,7 +119,7 @@ struct mk_config {
 static struct mk_config mk_cfg __initdata;
 
 module_param_array_named(map, mk_cfg.args, int, &(mk_cfg.nargs), 0);
-MODULE_PARM_DESC(map, "Enable or disable GPIO, MCP23017, TFT, Custom Arcade Joystick and Dualstick");
+MODULE_PARM_DESC(map, "Enable or disable GPIO, MCP23017, TFT, Custom Arcade Joystick and Teensy");
 
 struct gpio_config {
 	int mk_arcade_gpio_maps_custom[12];
@@ -211,9 +211,7 @@ static const short mk_arcade_gpio_btn[] = {
 };
 
 // Teensy axes (4): L-Stick X, L-Stick Y, R-Stick X, R-Stick Y
-static const short mk_teensy_axes[] = {
-	ABS_X, ABS_Y, ABS_RX, ABS_RY
-};
+//                  ABS_X,     ABS_Y,     ABS_RX,    ABS_RY
 
 // Teensy buttons (16): A, B, X, Y, L, R, Select, Start, L-Stick press, R-Stick press, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down, Custom1, Custom2
 static const short mk_teensy_buttons[] = { 
@@ -346,6 +344,7 @@ static void mk_gpio_read_packet(struct mk_pad * pad, unsigned char *data) {
 	}
 }
 
+// this function needs work
 static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 	int i;
 
@@ -399,7 +398,7 @@ static void mk_teensy_input_report(struct mk_pad * pad, unsigned char * data) {
 
 	// send button data to input device
 	for (j = 4; j < mk_teensy_input_bytes; j++) {
-		input_report_key(dev, gp_dualstick_buttons[j - 4], data[j]);
+		input_report_key(dev, mk_teensy_buttons[j - 4], data[j]);
 	}
 	input_sync(dev);
 }
@@ -588,20 +587,20 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		i2c_init();
 		udelay(1000);
 		// Put all GPIOA inputs on MCP23017 in INPUT mode
-		i2c_write(pad->mcp23017addr, MPC23017_GPIOA_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOA_MODE, &FF, 1);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode
-		i2c_write(pad->mcp23017addr, MPC23017_GPIOA_PULLUPS_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOA_PULLUPS_MODE, &FF, 1);
 		udelay(1000);
 		// Put all GPIOB inputs on MCP23017 in INPUT mode
-		i2c_write(pad->mcp23017addr, MPC23017_GPIOB_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_MODE, &FF, 1);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode
-		i2c_write(pad->mcp23017addr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode a second time
 		// Known bug : if you remove this line, you will not have pullups on GPIOB 
-		i2c_write(pad->mcp23017addr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
 		udelay(1000);
 	}
 	else { // if teensy, the pin setup is already done in the teensy script
