@@ -325,6 +325,40 @@ static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len
 	} while ((!(BSC1_S & BSC_S_DONE)));
 }
 
+// Function to read a number of bytes into a  buffer from the FIFO of the I2C controller
+
+static void i2c_smbus_read(char dev_addr, char reg_addr, char *buf, unsigned short len) {
+
+	i2c_write(dev_addr, reg_addr, NULL, 0);
+
+	unsigned short bufidx;
+	unsigned char count;
+	bufidx = 0;
+
+	memset(buf, 0, len); // clear the buffer
+
+	BSC1_DLEN = len;
+	BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
+	BSC1_C = START_READ; // Start Read after clearing FIFO (see #define)
+
+	do {
+		// Wait for some data to appear in the FIFO
+		while ((BSC1_S & BSC_S_TA) && !(BSC1_S & BSC_S_RXD));
+
+		// Consume the FIFO
+		while ((BSC1_S & BSC_S_RXD) && (bufidx < len + 1)) {
+			if (bufidx == 0) {
+				count = BSC1_FIFO; // consume the first byte as the count
+				bufidx++;
+			}
+			else {
+				buf[bufidx - 1] = BSC1_FIFO;
+				bufidx++;
+			}
+		}
+	} while ((!(BSC1_S & BSC_S_DONE)));
+}
+
 /*  ------------------------------------------------------------------------------- */
 
 static void mk_mcp23017_read_packet(struct mk_pad * pad, unsigned char *data) {
@@ -374,7 +408,7 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 	 */
 	char result[6];
 
-	i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6);
+	i2c_smbus_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6);
 
 	// read the first four bytes as axes
 	for (i = 0; i < 4; i++) {
