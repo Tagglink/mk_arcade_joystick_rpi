@@ -34,6 +34,7 @@
 #include <linux/mutex.h>
 #include <linux/slab.h>
 
+#include <linux/i2c-dev.h>
 #include <linux/ioport.h>
 #include <asm/io.h>
 
@@ -73,6 +74,21 @@ MODULE_LICENSE("GPL");
 #define MPC23017_GPIOB_PULLUPS_MODE	0x0d
 #define MPC23017_GPIOA_READ             0x12
 #define MPC23017_GPIOB_READ             0x13
+
+/*
+ * Teensy i2c gamepad defines
+ */
+#define TEENSY_READ_INPUT      0x10
+#define TEENSY_BOUNCE_INTERVAL 0x20
+#define TEENSY_CALIB_JS1X_MAX  0x30
+#define TEENSY_CALIB_JS1Y_MAX  0x40
+#define TEENSY_CALIB_JS1X_MIN  0x50
+#define TEENSY_CALIB_JS1Y_MIN  0x60
+#define TEENSY_CALIB_JS2X_MAX  0x70
+#define TEENSY_CALIB_JS2Y_MAX  0x80
+#define TEENSY_CALIB_JS2X_MIN  0x90
+#define TEENSY_CALIB_JS2Y_MIN  0xA0
+#define TEENSY_I2C_CLOCKRATE   0xB0
 
 /*
 * Defines for I2C peripheral (aka BSC, or Broadcom Serial Controller)
@@ -358,21 +374,21 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 	 */
 	char result[6];
 
-	i2c_read(pad->i2caddr, NULL, result, 6);
+	i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6);
 
 	// read the first four bytes as axes
-	for (i = 0; i < mk_teensy_axis_count; i++) {
+	for (i = 0; i < 4; i++) {
 		data[i] = result[i];
 	}
 
 	// read 8 buttons in the 5th byte
 	for (i = 4; i < 12; i++) {
-		data[i] = !((result[4] >> i - 4) & 0x1);
+		data[i] = (result[4] >> (i - 4)) & 0x1;
 	}
 
 	// read 8 buttons in the 6th byte
 	for (i = 12; i < 20; i++) {
-		data[i] = !((result[5] >> i - 12) & 0x1);
+		data[i] = (result[5] >> (i - 12)) & 0x1;
 	}
 }
 
@@ -603,7 +619,7 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
 		udelay(1000);
 	}
-	else { // if teensy, the pin setup is already done in the teensy script
+	else { // if teensy, the pin setup is already done in the teensy
 		i2c_init();
 		udelay(1000);
 		// will come back to this if there are any setup parameters I might
