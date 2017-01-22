@@ -131,6 +131,16 @@ static struct gpio_config gpio_cfg __initdata;
 module_param_array_named(gpio, gpio_cfg.mk_arcade_gpio_maps_custom, int, &(gpio_cfg.nargs), 0);
 MODULE_PARM_DESC(gpio, "Numbers of custom GPIO for Arcade Joystick");
 
+struct mcp_config {
+    int mcp23017addresses[MK_MAX_DEVICES];
+    unsigned int nargs;
+};
+
+static struct mcp_config mcp_cfg __initdata;
+
+module_param_array_named(mcp, mcp_cfg.mcp23017addresses, int, &(mcp_cfg.nargs), 0);
+MODULE_PARM_DESC(mcp, "Addresses of MCP23017 chips");
+
 enum mk_type {
     MK_NONE = 0,
     MK_ARCADE_GPIO,
@@ -423,7 +433,7 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
     }
 
     pad->type = pad_type;
-    pad->mcp23017addr = pad_type_arg;
+    pad->mcp23017addr = mcp_cfg.mcp23017addresses[idx];
     snprintf(pad->phys, sizeof (pad->phys),
             "input%d", idx);
 
