@@ -209,8 +209,6 @@ static const int mk_teensy_axis_count = 4;
 static const int mk_teensy_button_count = 16;
 static const int mk_teensy_input_bytes = 20;
 
-static const int mk_i2c_timeout_cycles = 50;
-
 // Map of the gpios :                     up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
 static const int mk_arcade_gpio_maps[] = { 4,  17,    27,  22,    10,    9,      25, 24, 23, 18, 15, 14 };
 // 2nd joystick on the b+ GPIOS                 up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
@@ -275,21 +273,19 @@ static void i2c_init(void) {
 }
 
 // timeout becomes 1 if timeout was encountered
-static void wait_i2c_done(int* timeout) {
-	int cycles = mk_i2c_timeout_cycles;
+static void wait_i2c_done() {
+	unsigned short cycles = 50;
 
 	while ((!((BSC1_S)& BSC_S_DONE)) && --cycles) {
 		usleep_range(1000, 1100);
 	}
-	if (cycles == 0)
-		*timeout = 1;
 }
 
 // Function to write data to an I2C device via the FIFO.  This doesn't refill the FIFO, so writes are limited to 16 bytes
 // including the register address. len specifies the number of bytes in the buffer.
 // timeout becomes 1 if timeout was encountered
 
-static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short len, int* timeout) {
+static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short len) {
 
 	int idx;
 
@@ -303,19 +299,15 @@ static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short le
 	BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
 	BSC1_C = START_WRITE; // Start Write (see #define)
 
-	wait_i2c_done(timeout);
+	wait_i2c_done();
 }
 
 // Function to read a number of bytes into a  buffer from the FIFO of the I2C controller
 
 static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len) {
 	unsigned short bufidx;
-	unsigned short timeout_limit = 5;
-	int timeout = 0;
 
-	do {
-		i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
-	} while (timeout > 0 && --timeout_limit);
+	i2c_write(dev_addr, reg_addr, NULL, 0);
 
 	bufidx = 0;
 
@@ -614,24 +606,21 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		i2c_init();
 		udelay(1000);
 		// Put all GPIOA inputs on MCP23017 in INPUT mode
-		i2c_write(pad->i2caddr, MPC23017_GPIOA_MODE, &FF, 1, &err);
+		i2c_write(pad->i2caddr, MPC23017_GPIOA_MODE, &FF, 1);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode
-		i2c_write(pad->i2caddr, MPC23017_GPIOA_PULLUPS_MODE, &FF, 1, &err);
+		i2c_write(pad->i2caddr, MPC23017_GPIOA_PULLUPS_MODE, &FF, 1);
 		udelay(1000);
 		// Put all GPIOB inputs on MCP23017 in INPUT mode
-		i2c_write(pad->i2caddr, MPC23017_GPIOB_MODE, &FF, 1, &err);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_MODE, &FF, 1);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode
-		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1, &err);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode a second time
 		// Known bug : if you remove this line, you will not have pullups on GPIOB 
-		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1, &err);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
 		udelay(1000);
-
-		if (err)
-			pr_err("MCP23017 setup encountered an i2c timeout, pad: %d\n", idx);
 	}
 	else { // if teensy, the pin setup is already done in the teensy
 		i2c_init();
