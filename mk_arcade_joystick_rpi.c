@@ -309,13 +309,13 @@ static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short le
 // Function to read a number of bytes into a  buffer from the FIFO of the I2C controller
 
 static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len) {
+	unsigned short bufidx;
 	int timeout = 0;
-	
+
 	do {
 		i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
 	} while (timeout > 0);
 
-	unsigned short bufidx;
 	bufidx = 0;
 
 	memset(buf, 0, len); // clear the buffer
@@ -613,21 +613,24 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		i2c_init();
 		udelay(1000);
 		// Put all GPIOA inputs on MCP23017 in INPUT mode
-		i2c_write(pad->i2caddr, MPC23017_GPIOA_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOA_MODE, &FF, 1, &err);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode
-		i2c_write(pad->i2caddr, MPC23017_GPIOA_PULLUPS_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOA_PULLUPS_MODE, &FF, 1, &err);
 		udelay(1000);
 		// Put all GPIOB inputs on MCP23017 in INPUT mode
-		i2c_write(pad->i2caddr, MPC23017_GPIOB_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_MODE, &FF, 1, &err);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode
-		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1, &err);
 		udelay(1000);
 		// Put all inputs on MCP23017 in pullup mode a second time
 		// Known bug : if you remove this line, you will not have pullups on GPIOB 
-		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1);
+		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1, &err);
 		udelay(1000);
+
+		if (err)
+			pr_err("MCP23017 setup encountered an i2c timeout");
 	}
 	else { // if teensy, the pin setup is already done in the teensy
 		i2c_init();
