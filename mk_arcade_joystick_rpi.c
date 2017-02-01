@@ -310,11 +310,12 @@ static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short le
 
 static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len) {
 	unsigned short bufidx;
+	unsigned short timeout_limit = 5;
 	int timeout = 0;
 
 	do {
 		i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
-	} while (timeout > 0);
+	} while (timeout > 0 && --timeout_limit);
 
 	bufidx = 0;
 
@@ -630,7 +631,7 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		udelay(1000);
 
 		if (err)
-			pr_err("MCP23017 setup encountered an i2c timeout");
+			pr_err("MCP23017 setup encountered an i2c timeout, pad: %d\n", idx);
 	}
 	else { // if teensy, the pin setup is already done in the teensy
 		i2c_init();
