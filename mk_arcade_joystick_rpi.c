@@ -273,7 +273,7 @@ static void i2c_init(void) {
 }
 
 // timeout becomes 1 if timeout was encountered
-static void wait_i2c_done() {
+static void wait_i2c_done(void) {
 	unsigned short cycles = 50;
 
 	while ((!((BSC1_S)& BSC_S_DONE)) && --cycles) {
