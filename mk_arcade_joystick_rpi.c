@@ -282,7 +282,7 @@ static void wait_i2c_done(int* timeout) {
 		usleep_range(1000, 1100);
 	}
 	if (cycles == 0)
-		*(timeout) = 1;
+		*timeout = 1;
 }
 
 // Function to write data to an I2C device via the FIFO.  This doesn't refill the FIFO, so writes are limited to 16 bytes
