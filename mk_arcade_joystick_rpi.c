@@ -274,9 +274,7 @@ static void i2c_init(void) {
 
 // timeout becomes 1 if timeout was encountered
 static void wait_i2c_done(void) {
-	unsigned short cycles = 50;
-
-	while ((!((BSC1_S)& BSC_S_DONE)) && --cycles) {
+	while ((!((BSC1_S)& BSC_S_DONE))) {
 		usleep_range(1000, 1100);
 	}
 }
@@ -305,9 +303,9 @@ static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short le
 // Function to read a number of bytes into a  buffer from the FIFO of the I2C controller
 
 static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len) {
-	unsigned short bufidx;
-
 	i2c_write(dev_addr, reg_addr, NULL, 0);
+
+	unsigned short bufidx;
 
 	bufidx = 0;
 
