@@ -313,7 +313,7 @@ static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len
 
 	do {
 		i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
-	} while (timeout && --write_max_tries)
+	} while (timeout && --write_max_tries);
 
     if (write_max_tries == 0)
 		return;
