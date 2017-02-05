@@ -279,9 +279,9 @@ static void wait_i2c_done(int* timeout) {
 	while ((!((BSC1_S)& BSC_S_DONE)) && --timeout_counter) {
 		udelay(1000);
 	}
-
+	
 	if (timeout_counter == 0) {
-		*timeout = 1;
+		*(timeout) = 1;
 	}
 }
 
