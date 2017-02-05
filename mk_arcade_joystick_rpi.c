@@ -275,7 +275,7 @@ static void i2c_init(void) {
 // timeout becomes 1 if timeout was encountered
 static void wait_i2c_done(void) {
 	while ((!((BSC1_S)& BSC_S_DONE))) {
-		usleep_range(1000, 1100);
+		udelay(1000);
 	}
 }
 
