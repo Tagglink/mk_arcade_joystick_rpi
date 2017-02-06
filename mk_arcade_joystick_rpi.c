@@ -311,10 +311,15 @@ static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len
 	unsigned short bufidx;
 	unsigned short write_max_tries = 10;
 	int timeout = 0;
+	int interrupt;
 
 	do {
 		i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
-	} while (timeout && --write_max_tries);
+		interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
+	} while (interrupt == 1 && timeout && --write_max_tries);
+
+	if (interrupt == 1)
+		return;
 
 	bufidx = 0;
 
@@ -448,11 +453,10 @@ static void mk_process_packet(struct mk *mk) {
 			mk_input_report(pad, data);
 		}
 		if (pad->type == MK_TEENSY) {
-			// read interrupt signal and quit updating if high
-			if (!(GPIO_READ(mk_teensy_interrupt_gpio))) {
-				mk_teensy_read_packet(pad, teensy_data);
+			mk_teensy_read_packet(pad, teensy_data);
+
+			if (!(GPIO_READ(mk_teensy_interrupt_gpio))) // only report if interrupt is low
 				mk_teensy_input_report(pad, teensy_data);
-			}
 		}
 	}
 
