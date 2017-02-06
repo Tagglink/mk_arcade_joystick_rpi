@@ -206,8 +206,9 @@ static struct mk *mk_base;
 static const int mk_max_arcade_buttons = 12;
 
 static const int mk_teensy_axis_count = 4;
-static const int mk_teensy_button_count = 16;
-static const int mk_teensy_input_bytes = 20;
+static const int mk_teensy_button_count = 15;
+static const int mk_teensy_input_bytes = 19;
+static const int mk_teensy_interrupt_gpio = 26;
 static const int mk_i2c_timeout_cycles = 500;
 
 // Map of the gpios :                     up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
@@ -230,9 +231,9 @@ static const short mk_arcade_gpio_btn[] = {
 // Teensy axes (4): L-Stick X, L-Stick Y, R-Stick X, R-Stick Y
 //                  ABS_X,     ABS_Y,     ABS_RX,    ABS_RY
 
-// Teensy buttons (16): A, B, X, Y, L, R, Select, Start, L-Stick press, R-Stick press, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down, Custom1, Custom2
+// Teensy buttons (16): A, B, X, Y, L, R, Select, Start, L-Stick press, R-Stick press, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down, Custom1
 static const short mk_teensy_buttons[] = { 
-	BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_DPAD_UP, BTN_DPAD_DOWN, BTN_MODE, BTN_TRIGGER_HAPPY1
+	BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_DPAD_UP, BTN_DPAD_DOWN, BTN_MODE
 };
 
 static const char *mk_names[] = {
@@ -371,6 +372,7 @@ static void mk_gpio_read_packet(struct mk_pad * pad, unsigned char *data) {
 
 // this function needs work
 static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
+	int interrupt;
 	int i;
 
 	/* 
@@ -379,7 +381,7 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 	 * byte 2: R-Stick X
 	 * byte 3: R-Stick Y
 	 * byte 4: A, B, X, Y, L, R, Select, Start
-	 * byte 5: L-Stick, R-Stick, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down, Custom1, Custom2
+	 * byte 5: L-Stick, R-Stick, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down, Custom1
 	 */
 	char result[6];
 
@@ -395,8 +397,8 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 		data[i] = (result[4] >> (i - 4)) & 0x1;
 	}
 
-	// read 8 buttons in the 6th byte
-	for (i = 12; i < 20; i++) {
+	// read 7 buttons in the 6th byte
+	for (i = 12; i < 19; i++) {
 		data[i] = (result[5] >> (i - 12)) & 0x1;
 	}
 }
@@ -446,8 +448,11 @@ static void mk_process_packet(struct mk *mk) {
 			mk_input_report(pad, data);
 		}
 		if (pad->type == MK_TEENSY) {
-			mk_teensy_read_packet(pad, teensy_data);
-			mk_teensy_input_report(pad, teensy_data);
+			// read interrupt signal and quit updating if high
+			if (!(GPIO_READ(mk_teensy_interrupt_gpio))) {
+				mk_teensy_read_packet(pad, teensy_data);
+				mk_teensy_input_report(pad, teensy_data);
+			}
 		}
 	}
 
@@ -629,11 +634,11 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1, &timeout);
 		udelay(1000);
 	}
-	else { // if teensy, the pin setup is already done in the teensy
+	else { // if teensy, setup i2c and the interrupt gpio
 		i2c_init();
 		udelay(1000);
-		// will come back to this if there are any setup parameters I might
-		// want to send to the Teensy from this driver
+		setGpioAsInput(mk_teensy_interrupt_gpio);
+		udelay(1000);
 	}
 
 	err = input_register_device(pad->dev);
