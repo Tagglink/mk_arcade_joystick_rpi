@@ -168,7 +168,7 @@ enum mk_type {
 	MK_MAX
 };
 
-#define MK_REFRESH_TIME	HZ/100
+#define MK_REFRESH_TIME	HZ/50
 
 struct mk_pad {
 	struct input_dev *dev;
@@ -208,7 +208,7 @@ static const int mk_max_arcade_buttons = 12;
 static const int mk_teensy_axis_count = 4;
 static const int mk_teensy_button_count = 16;
 static const int mk_teensy_input_bytes = 20;
-static const int mk_i2c_timeout_cycles = 50;
+static const int mk_i2c_timeout_cycles = 500;
 
 // Map of the gpios :                     up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
 static const int mk_arcade_gpio_maps[] = { 4,  17,    27,  22,    10,    9,      25, 24, 23, 18, 15, 14 };
