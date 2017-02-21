@@ -375,6 +375,9 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 				buf[bufidx++] = BSC1_FIFO;
 			}
 		} while ((!(BSC1_S & BSC_S_DONE)));
+
+		if ((BSC1_S & BSC_S_CLKT))
+			pr_err("Clock was stretched! Teensy is not responding!");
 	}
 }
 
