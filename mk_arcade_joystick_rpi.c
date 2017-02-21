@@ -341,11 +341,14 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 	int interrupt = 0;
 
 	i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
+	udelay(100); // wait a bit for the teensy to lower the interrupt pin
 	interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
 
 	if (interrupt || timeout) {
-		if (interrupt)
+		if (interrupt) {
 			pr_err("interrupt is high! cancelling i2c read!\n");
+			pr_err("interrupt: %d\n", interrupt);
+		}
 		if (timeout)
 			pr_err("i2c write timed out! cancelling i2c read!\n");
 
