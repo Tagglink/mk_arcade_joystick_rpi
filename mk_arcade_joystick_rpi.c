@@ -334,7 +334,7 @@ static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len
 	} while ((!(BSC1_S & BSC_S_DONE)));
 }
 
-static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len) {
+static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len, int* clock_stretch) {
 	unsigned short bufidx;
 	unsigned short write_max_tries = 10;
 	int timeout = 0;
@@ -376,8 +376,10 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 			}
 		} while ((!(BSC1_S & BSC_S_DONE)));
 
-		if ((BSC1_S & BSC_S_CLKT))
+		if ((BSC1_S & BSC_S_CLKT)) {
 			pr_err("Clock was stretched! Teensy is not responding!\n");
+			*(clock_stretch) = 1;
+		}
 	}
 }
 
@@ -417,8 +419,9 @@ static void mk_gpio_read_packet(struct mk_pad * pad, unsigned char *data) {
 }
 
 // this function needs work
-static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
+static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int* error) {
 	int i;
+	int clock_stretch = 0;
 
 	/*
 	 * byte 0: L-Stick X
@@ -431,24 +434,30 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 	char result[6];
 
 	pr_err("reading teensy packet...\n");
-	mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6);
+	mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &clock_stretch);
 
-	// read the first four bytes as axes
-	for (i = 0; i < 4; i++) {
-		data[i] = result[i];
+	if (clock_stretch) {
+		*(error) = 1;
 	}
+	else {
 
-	// read 8 buttons in the 5th byte
-	for (i = 4; i < 12; i++) {
-		data[i] = (result[4] >> (i - 4)) & 0x1;
+		// read the first four bytes as axes
+		for (i = 0; i < 4; i++) {
+			data[i] = result[i];
+		}
+
+		// read 8 buttons in the 5th byte
+		for (i = 4; i < 12; i++) {
+			data[i] = (result[4] >> (i - 4)) & 0x1;
+		}
+
+		// read 6 buttons in the 6th byte
+		for (i = 12; i < 18; i++) {
+			data[i] = (result[5] >> (i - 12)) & 0x1;
+		}
+
+		pr_err("teensy packet read!\n");
 	}
-
-	// read 6 buttons in the 6th byte
-	for (i = 12; i < 18; i++) {
-		data[i] = (result[5] >> (i - 12)) & 0x1;
-	}
-
-	pr_err("teensy packet read!\n");
 }
 
 static void mk_input_report(struct mk_pad * pad, unsigned char * data) {
@@ -490,6 +499,7 @@ static void mk_process_packet(struct mk *mk) {
 	unsigned char teensy_data[mk_teensy_input_bytes];
 	struct mk_pad *pad;
 	int i;
+	int error = 0;
 
 	for (i = 0; i < MK_MAX_DEVICES; i++) {
 		pad = &mk->pads[i];
@@ -502,8 +512,10 @@ static void mk_process_packet(struct mk *mk) {
 			mk_input_report(pad, data);
 		}
 		if (pad->type == MK_TEENSY) {
-			mk_teensy_read_packet(pad, teensy_data);
-			mk_teensy_input_report(pad, teensy_data);
+			mk_teensy_read_packet(pad, teensy_data, &error);
+
+			if (!error)
+				mk_teensy_input_report(pad, teensy_data);
 		}
 	}
 
