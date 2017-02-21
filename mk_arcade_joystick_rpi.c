@@ -291,7 +291,7 @@ static void wait_i2c_done(int* timeout) {
 static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short len, int* timeout) {
 	int idx;
 
-	pr_err("i2c WRITE");
+	pr_err("i2c WRITE\n");
 
 	BSC1_A = dev_addr;
 	BSC1_DLEN = len + 1; // one byte for the register address, plus the buffer length
@@ -356,7 +356,7 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 	}
 	else {
 
-		pr_err("i2c READ");
+		pr_err("i2c READ\n");
 
 		bufidx = 0;
 
@@ -430,7 +430,7 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 	 */
 	char result[6];
 
-	pr_err("reading teensy packet...");
+	pr_err("reading teensy packet...\n");
 	mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6);
 
 	// read the first four bytes as axes
@@ -448,7 +448,7 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 		data[i] = (result[5] >> (i - 12)) & 0x1;
 	}
 
-	pr_err("teensy packet read!");
+	pr_err("teensy packet read!\n");
 }
 
 static void mk_input_report(struct mk_pad * pad, unsigned char * data) {
