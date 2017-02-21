@@ -463,15 +463,16 @@ static void mk_teensy_input_report(struct mk_pad * pad, unsigned char * data) {
 	input_report_abs(dev, ABS_RX, data[2]);
 	input_report_abs(dev, ABS_RY, data[3]);
 
-	pr_err("reporting axis %d as %d", ABS_X, data[0]);
-	pr_err("reporting axis %d as %d", ABS_Y, data[1]);
-	pr_err("reporting axis %d as %d", ABS_RX, data[2]);
-	pr_err("reporting axis %d as %d", ABS_RY, data[3]);
+	pr_err("reporting axis ABS_X as %d\n", data[0]);
+	pr_err("reporting axis ABS_Y as %d\n", data[1]);
+	pr_err("reporting axis ABS_RX as %d\n", data[2]);
+	pr_err("reporting axis ABS_RY as %d\n", data[3]);
 
 	// send button data to input device
 	for (j = 4; j < mk_teensy_input_bytes; j++) {
 		input_report_key(dev, mk_teensy_buttons[j - 4], data[j]);
-		pr_err("reporting key %d as %d", (j - 4), data[j]);
+		pr_err("reporting key %d ", (j - 4));
+		pr_err("as %d\n", data[j]);
 	}
 	input_sync(dev);
 }
