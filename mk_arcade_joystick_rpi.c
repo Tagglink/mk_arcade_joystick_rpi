@@ -209,7 +209,7 @@ static const int mk_teensy_axis_count = 4;
 static const int mk_teensy_button_count = 14;
 static const int mk_teensy_input_bytes = 18;
 static const int mk_teensy_interrupt_gpio = 26;
-static const int mk_i2c_timeout_cycles = 50;
+static const int mk_i2c_timeout_cycles = 5000;
 
 // Map of the gpios :                     up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
 static const int mk_arcade_gpio_maps[] = { 4,  17,    27,  22,    10,    9,      25, 24, 23, 18, 15, 14 };
@@ -278,7 +278,7 @@ static void i2c_init(void) {
 static void wait_i2c_done(int* timeout) {
 	int timeout_counter = mk_i2c_timeout_cycles;
 	while ((!((BSC1_S)& BSC_S_DONE)) && --timeout_counter) {
-		udelay(1000);
+		udelay(10);
 	}
 
 	if (timeout_counter == 0) {
@@ -290,6 +290,8 @@ static void wait_i2c_done(int* timeout) {
 // including the register address. len specifies the number of bytes in the buffer.
 static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short len, int* timeout) {
 	int idx;
+
+	pr_err("i2c WRITE");
 
 	BSC1_A = dev_addr;
 	BSC1_DLEN = len + 1; // one byte for the register address, plus the buffer length
@@ -342,28 +344,36 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 	interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
 
 	if (interrupt || timeout) {
+		if (interrupt)
+			pr_err("interrupt is high! cancelling i2c read!\n");
+		if (timeout)
+			pr_err("i2c write timed out! cancelling i2c read!\n");
+
 		BSC1_S = CLEAR_STATUS;
 		BSC1_C = BSC_C_CLEAR;
-		return;
 	}
+	else {
 
-	bufidx = 0;
+		pr_err("i2c READ");
 
-	memset(buf, 0, len); // clear the buffer
+		bufidx = 0;
 
-	BSC1_DLEN = len;
-	BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
-	BSC1_C = START_READ; // Start Read after clearing FIFO (see #define)
+		memset(buf, 0, len); // clear the buffer
 
-	do {
-		// Wait for some data to appear in the FIFO
-		while ((BSC1_S & BSC_S_TA) && !(BSC1_S & BSC_S_RXD));
+		BSC1_DLEN = len;
+		BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
+		BSC1_C = START_READ; // Start Read after clearing FIFO (see #define)
 
-		// Consume the FIFO
-		while ((BSC1_S & BSC_S_RXD) && (bufidx < len)) {
-			buf[bufidx++] = BSC1_FIFO;
-		}
-	} while ((!(BSC1_S & BSC_S_DONE)));
+		do {
+			// Wait for some data to appear in the FIFO
+			while ((BSC1_S & BSC_S_TA) && !(BSC1_S & BSC_S_RXD));
+
+			// Consume the FIFO
+			while ((BSC1_S & BSC_S_RXD) && (bufidx < len)) {
+				buf[bufidx++] = BSC1_FIFO;
+			}
+		} while ((!(BSC1_S & BSC_S_DONE)));
+	}
 }
 
 /*  ------------------------------------------------------------------------------- */
