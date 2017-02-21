@@ -291,6 +291,8 @@ static void wait_i2c_done(int* timeout) {
 static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short len, int* timeout) {
 	int idx;
 
+	pr_err("i2c WRITE");
+
 	BSC1_A = dev_addr;
 	BSC1_DLEN = len + 1; // one byte for the register address, plus the buffer length
 
@@ -351,6 +353,8 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 		BSC1_C = BSC_C_CLEAR;
 	}
 	else {
+
+		pr_err("i2c READ");
 
 		bufidx = 0;
 
