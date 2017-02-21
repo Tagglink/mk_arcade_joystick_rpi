@@ -343,6 +343,8 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 	i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
 	interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
 
+	pr_err("interrupt pin: %d\n", interrupt);
+
 	if (interrupt || timeout) {
 		if (interrupt)
 			pr_err("interrupt is high! cancelling i2c read!\n");
@@ -474,8 +476,7 @@ static void mk_teensy_input_report(struct mk_pad * pad, unsigned char * data) {
 	// send button data to input device
 	for (j = 4; j < mk_teensy_input_bytes; j++) {
 		input_report_key(dev, mk_teensy_buttons[j - 4], data[j]);
-		pr_err("reporting key %d ", (j - 4));
-		pr_err("as %d\n", data[j]);
+		pr_err("reporting key %d as %d\n", (j - 4), data[j]);
 	}
 	input_sync(dev);
 }
