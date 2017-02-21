@@ -334,7 +334,7 @@ static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len
 	} while ((!(BSC1_S & BSC_S_DONE)));
 }
 
-static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len, int* clock_stretch) {
+static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len, int* error) {
 	unsigned short bufidx;
 	unsigned short write_max_tries = 10;
 	int timeout = 0;
@@ -342,8 +342,6 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 
 	i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
 	interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
-
-	pr_err("interrupt pin: %d\n", interrupt);
 
 	if (interrupt || timeout) {
 		if (interrupt)
@@ -353,6 +351,7 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 
 		BSC1_S = CLEAR_STATUS;
 		BSC1_C = BSC_C_CLEAR;
+		*(error) = 1;
 	}
 	else {
 
@@ -378,7 +377,7 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 
 		if ((BSC1_S & BSC_S_CLKT)) {
 			pr_err("Clock was stretched! Teensy is not responding!\n");
-			*(clock_stretch) = 1;
+			*(error) = 1;
 		}
 	}
 }
@@ -421,7 +420,7 @@ static void mk_gpio_read_packet(struct mk_pad * pad, unsigned char *data) {
 // this function needs work
 static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int* error) {
 	int i;
-	int clock_stretch = 0;
+	int i2c_read_error = 0;
 
 	/*
 	 * byte 0: L-Stick X
@@ -434,9 +433,9 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 	char result[6];
 
 	pr_err("reading teensy packet...\n");
-	mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &clock_stretch);
+	mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
 
-	if (clock_stretch) {
+	if (i2c_read_error) {
 		*(error) = 1;
 	}
 	else {
