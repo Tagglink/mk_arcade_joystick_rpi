@@ -425,6 +425,7 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 	 */
 	char result[6];
 
+	pr_err("reading teensy packet...");
 	mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6);
 
 	// read the first four bytes as axes
@@ -441,6 +442,8 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 	for (i = 12; i < 18; i++) {
 		data[i] = (result[5] >> (i - 12)) & 0x1;
 	}
+
+	pr_err("teensy packet read!");
 }
 
 static void mk_input_report(struct mk_pad * pad, unsigned char * data) {
