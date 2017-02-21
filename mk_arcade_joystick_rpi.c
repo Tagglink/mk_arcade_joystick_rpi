@@ -43,7 +43,7 @@ MODULE_AUTHOR("Matthieu Proucelle");
 MODULE_DESCRIPTION("GPIO, MCP23017 and Teensy Arcade Joystick Driver");
 MODULE_LICENSE("GPL");
 
-#define MK_MAX_DEVICES		9
+#define MK_MAX_DEVICES  9
 
 #ifdef RPI2
 #define PERI_BASE        0x3F000000
@@ -62,16 +62,16 @@ MODULE_LICENSE("GPL");
 #define GPIO_SET *(gpio+7)
 #define GPIO_CLR *(gpio+10)
 
-#define BSC1_BASE		(PERI_BASE + 0x804000)
+#define BSC1_BASE  (PERI_BASE + 0x804000)
 
 
 /*
 * MCP23017 Defines
 */
-#define MPC23017_GPIOA_MODE		0x00
-#define MPC23017_GPIOB_MODE		0x01
-#define MPC23017_GPIOA_PULLUPS_MODE	0x0c
-#define MPC23017_GPIOB_PULLUPS_MODE	0x0d
+#define MPC23017_GPIOA_MODE  0x00
+#define MPC23017_GPIOB_MODE  0x01
+#define MPC23017_GPIOA_PULLUPS_MODE 0x0c
+#define MPC23017_GPIOB_PULLUPS_MODE 0x0d
 #define MPC23017_GPIOA_READ             0x12
 #define MPC23017_GPIOB_READ             0x13
 
@@ -90,39 +90,39 @@ MODULE_LICENSE("GPL");
 #define TEENSY_CALIB_JS2Y_MIN  0xA0
 #define TEENSY_I2C_CLOCKRATE   0xB0
 
-/*
-* Defines for I2C peripheral (aka BSC, or Broadcom Serial Controller)
-*/
+ /*
+ * Defines for I2C peripheral (aka BSC, or Broadcom Serial Controller)
+ */
 
-#define BSC1_C		*(bsc1 + 0x00)
-#define BSC1_S		*(bsc1 + 0x01)
-#define BSC1_DLEN	*(bsc1 + 0x02)
-#define BSC1_A		*(bsc1 + 0x03)
-#define BSC1_FIFO	*(bsc1 + 0x04)
+#define BSC1_C  *(bsc1 + 0x00)
+#define BSC1_S  *(bsc1 + 0x01)
+#define BSC1_DLEN *(bsc1 + 0x02)
+#define BSC1_A  *(bsc1 + 0x03)
+#define BSC1_FIFO *(bsc1 + 0x04)
 
-#define BSC_C_I2CEN	(1 << 15)
-#define BSC_C_INTR	(1 << 10)
-#define BSC_C_INTT	(1 << 9)
-#define BSC_C_INTD	(1 << 8)
-#define BSC_C_ST	(1 << 7)
-#define BSC_C_CLEAR	(1 << 4)
-#define BSC_C_READ	1
+#define BSC_C_I2CEN (1 << 15)
+#define BSC_C_INTR (1 << 10)
+#define BSC_C_INTT (1 << 9)
+#define BSC_C_INTD (1 << 8)
+#define BSC_C_ST (1 << 7)
+#define BSC_C_CLEAR (1 << 4)
+#define BSC_C_READ 1
 
-#define START_READ	BSC_C_I2CEN|BSC_C_ST|BSC_C_CLEAR|BSC_C_READ
-#define START_WRITE	BSC_C_I2CEN|BSC_C_ST
+#define START_READ BSC_C_I2CEN|BSC_C_ST|BSC_C_CLEAR|BSC_C_READ
+#define START_WRITE BSC_C_I2CEN|BSC_C_ST
 
-#define BSC_S_CLKT	(1 << 9)
-#define BSC_S_ERR	(1 << 8)
-#define BSC_S_RXF	(1 << 7)
-#define BSC_S_TXE	(1 << 6)
-#define BSC_S_RXD	(1 << 5)
-#define BSC_S_TXD	(1 << 4)
-#define BSC_S_RXR	(1 << 3)
-#define BSC_S_TXW	(1 << 2)
-#define BSC_S_DONE	(1 << 1)
-#define BSC_S_TA	1
+#define BSC_S_CLKT (1 << 9)
+#define BSC_S_ERR (1 << 8)
+#define BSC_S_RXF (1 << 7)
+#define BSC_S_TXE (1 << 6)
+#define BSC_S_RXD (1 << 5)
+#define BSC_S_TXD (1 << 4)
+#define BSC_S_RXR (1 << 3)
+#define BSC_S_TXW (1 << 2)
+#define BSC_S_DONE (1 << 1)
+#define BSC_S_TA 1
 
-#define CLEAR_STATUS	BSC_S_CLKT|BSC_S_ERR|BSC_S_DONE
+#define CLEAR_STATUS BSC_S_CLKT|BSC_S_ERR|BSC_S_DONE
 
 static volatile unsigned *gpio;
 static volatile unsigned *bsc1;
@@ -168,7 +168,7 @@ enum mk_type {
 	MK_MAX
 };
 
-#define MK_REFRESH_TIME	HZ/50
+#define MK_REFRESH_TIME HZ/100
 
 struct mk_pad {
 	struct input_dev *dev;
@@ -206,10 +206,10 @@ static struct mk *mk_base;
 static const int mk_max_arcade_buttons = 12;
 
 static const int mk_teensy_axis_count = 4;
-static const int mk_teensy_button_count = 15;
-static const int mk_teensy_input_bytes = 19;
+static const int mk_teensy_button_count = 14;
+static const int mk_teensy_input_bytes = 18;
 static const int mk_teensy_interrupt_gpio = 26;
-static const int mk_i2c_timeout_cycles = 500;
+static const int mk_i2c_timeout_cycles = 50;
 
 // Map of the gpios :                     up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
 static const int mk_arcade_gpio_maps[] = { 4,  17,    27,  22,    10,    9,      25, 24, 23, 18, 15, 14 };
@@ -225,19 +225,19 @@ static const int mk_arcade_gpiob_maps[] = { 0, 1, 2,  3, 4, 5 };
 static const int mk_arcade_gpio_maps_tft[] = { 21, 13,    26,    19,    5,    6,     22, 4, 20, 17, 27,  16 };
 
 static const short mk_arcade_gpio_btn[] = {
-	BTN_START, BTN_SELECT, BTN_A, BTN_B, BTN_TR, BTN_Y, BTN_X, BTN_TL
+ BTN_START, BTN_SELECT, BTN_A, BTN_B, BTN_TR, BTN_Y, BTN_X, BTN_TL
 };
 
 // Teensy axes (4): L-Stick X, L-Stick Y, R-Stick X, R-Stick Y
 //                  ABS_X,     ABS_Y,     ABS_RX,    ABS_RY
 
-// Teensy buttons (16): A, B, X, Y, L, R, Select, Start, L-Stick press, R-Stick press, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down, Custom1
-static const short mk_teensy_buttons[] = { 
-	BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_DPAD_UP, BTN_DPAD_DOWN, BTN_MODE
+// Teensy buttons (15): A, B, X, Y, L, R, Select, Start, L-Stick press, R-Stick press, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down, Custom1
+static const short mk_teensy_buttons[] = {
+ BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_DPAD_UP, BTN_DPAD_DOWN
 };
 
 static const char *mk_names[] = {
-	NULL, "GPIO Controller 1", "GPIO Controller 2", "MCP23017 Controller", "GPIO Controller 1" , "GPIO Controller 1", "Teensy Controller 1"
+ NULL, "GPIO Controller 1", "GPIO Controller 2", "MCP23017 Controller", "GPIO Controller 1" , "GPIO Controller 1", "Teensy Controller 1"
 };
 
 /* GPIO UTILS */
@@ -257,7 +257,7 @@ static void setGpioAsInput(int gpioNum) {
 static int getPullUpMask(int gpioMap[]) {
 	int mask = 0x0000000;
 	int i;
-	for (i = 0; i<12; i++) {
+	for (i = 0; i < 12; i++) {
 		if (gpioMap[i] != -1) {   // to avoid unused pins
 			int pin_mask = 1 << gpioMap[i];
 			mask = mask | pin_mask;
@@ -280,7 +280,7 @@ static void wait_i2c_done(int* timeout) {
 	while ((!((BSC1_S)& BSC_S_DONE)) && --timeout_counter) {
 		udelay(1000);
 	}
-	
+
 	if (timeout_counter == 0) {
 		*(timeout) = 1;
 	}
@@ -289,12 +289,12 @@ static void wait_i2c_done(int* timeout) {
 // Function to write data to an I2C device via the FIFO.  This doesn't refill the FIFO, so writes are limited to 16 bytes
 // including the register address. len specifies the number of bytes in the buffer.
 static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short len, int* timeout) {
-
 	int idx;
 
 	BSC1_A = dev_addr;
 	BSC1_DLEN = len + 1; // one byte for the register address, plus the buffer length
 
+	BSC1_C = BSC_C_CLEAR; // clear FIFO
 	BSC1_FIFO = reg_addr; // start register address
 	for (idx = 0; idx < len; idx++)
 		BSC1_FIFO = buf[idx];
@@ -309,17 +309,43 @@ static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short le
 
 static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len) {
 	unsigned short bufidx;
-	unsigned short write_max_tries = 10;
 	int timeout = 0;
-	int interrupt;
+
+	i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
+
+	bufidx = 0;
+
+	memset(buf, 0, len); // clear the buffer
+
+	BSC1_DLEN = len;
+	BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
+	BSC1_C = START_READ; // Start Read after clearing FIFO (see #define)
 
 	do {
-		i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
-		interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
-	} while (interrupt == 1 && timeout && --write_max_tries);
+		// Wait for some data to appear in the FIFO
+		while ((BSC1_S & BSC_S_TA) && !(BSC1_S & BSC_S_RXD));
 
-	if (interrupt == 1)
+		// Consume the FIFO
+		while ((BSC1_S & BSC_S_RXD) && (bufidx < len)) {
+			buf[bufidx++] = BSC1_FIFO;
+		}
+	} while ((!(BSC1_S & BSC_S_DONE)));
+}
+
+static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len) {
+	unsigned short bufidx;
+	unsigned short write_max_tries = 10;
+	int timeout = 0;
+	int interrupt = 0;
+
+	i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
+	interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
+
+	if (interrupt || timeout) {
+		BSC1_S = CLEAR_STATUS;
+		BSC1_C = BSC_C_CLEAR;
 		return;
+	}
 
 	bufidx = 0;
 
@@ -377,20 +403,19 @@ static void mk_gpio_read_packet(struct mk_pad * pad, unsigned char *data) {
 
 // this function needs work
 static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
-	int interrupt;
 	int i;
 
-	/* 
+	/*
 	 * byte 0: L-Stick X
 	 * byte 1: L-Stick Y
 	 * byte 2: R-Stick X
 	 * byte 3: R-Stick Y
 	 * byte 4: A, B, X, Y, L, R, Select, Start
-	 * byte 5: L-Stick, R-Stick, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down, Custom1
+	 * byte 5: L-Stick, R-Stick, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down
 	 */
 	char result[6];
 
-	i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6);
+	mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6);
 
 	// read the first four bytes as axes
 	for (i = 0; i < 4; i++) {
@@ -402,8 +427,8 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data) {
 		data[i] = (result[4] >> (i - 4)) & 0x1;
 	}
 
-	// read 7 buttons in the 6th byte
-	for (i = 12; i < 19; i++) {
+	// read 6 buttons in the 6th byte
+	for (i = 12; i < 18; i++) {
 		data[i] = (result[5] >> (i - 12)) & 0x1;
 	}
 }
@@ -454,9 +479,7 @@ static void mk_process_packet(struct mk *mk) {
 		}
 		if (pad->type == MK_TEENSY) {
 			mk_teensy_read_packet(pad, teensy_data);
-
-			if (!(GPIO_READ(mk_teensy_interrupt_gpio))) // only report if interrupt is low
-				mk_teensy_input_report(pad, teensy_data);
+			mk_teensy_input_report(pad, teensy_data);
 		}
 	}
 
@@ -569,7 +592,7 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 			__set_bit(mk_arcade_gpio_btn[i], input_dev->keybit);
 	}
 	else { // if teensy, we are using two joysticks and more buttons
-		// setup left stick axes
+	 // setup left stick axes
 		for (i = 0; i < 2; i++)
 			input_set_abs_params(input_dev, ABS_X + i, 0, 255, 4, 8);
 
