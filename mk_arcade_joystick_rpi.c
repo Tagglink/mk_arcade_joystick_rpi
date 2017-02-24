@@ -168,7 +168,7 @@ enum mk_type {
 	MK_MAX
 };
 
-#define MK_REFRESH_TIME HZ/10
+#define MK_REFRESH_TIME HZ/100
 
 struct mk_pad {
 	struct input_dev *dev;
@@ -231,9 +231,9 @@ static const short mk_arcade_gpio_btn[] = {
 // Teensy axes (4): L-Stick X, L-Stick Y, R-Stick X, R-Stick Y
 //                  ABS_X,     ABS_Y,     ABS_RX,    ABS_RY
 
-// Teensy buttons (15): A, B, X, Y, L, R, Select, Start, L-Stick press, R-Stick press, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down, Custom1
+// Teensy buttons (14): A, B, X, Y, L, R, Select, Start, L-Stick press, R-Stick press, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down
 static const short mk_teensy_buttons[] = {
- BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_DPAD_UP, BTN_DPAD_DOWN
+	BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_DPAD_UP, BTN_DPAD_DOWN
 };
 
 static const char *mk_names[] = {
@@ -477,8 +477,8 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 			data[i] = (result[4] >> (i - 4)) & 0x1;
 		}
 
-		// read 6 buttons in the 6th byte
-		for (i = 12; i < 18; i++) {
+		// read 8 buttons in the 6th byte
+		for (i = 12; i < 20; i++) {
 			data[i] = (result[5] >> (i - 12)) & 0x1;
 		}
 
