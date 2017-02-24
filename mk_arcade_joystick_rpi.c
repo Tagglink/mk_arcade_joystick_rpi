@@ -524,7 +524,10 @@ static void mk_process_packet(struct mk *mk) {
 		}
 		if (pad->type == MK_TEENSY) {
 			interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
-			if (!interrupt) {
+			if (interrupt) {
+				pr_err("interrupt is high! cancelling i2c read.");
+			}
+			else {
 				mk_teensy_read_packet(pad, teensy_data, &error);
 
 				if (!error)
