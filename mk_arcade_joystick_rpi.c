@@ -62,6 +62,7 @@ MODULE_LICENSE("GPL");
 #define GPIO_SET *(gpio+7)
 #define GPIO_CLR *(gpio+10)
 
+#define BSC0_BASE  (PERI_BASE + 0x205000)
 #define BSC1_BASE  (PERI_BASE + 0x804000)
 
 
@@ -100,6 +101,12 @@ MODULE_LICENSE("GPL");
 #define BSC1_A  *(bsc1 + 0x03)
 #define BSC1_FIFO *(bsc1 + 0x04)
 
+#define BSC0_C  *(bsc0 + 0x00)
+#define BSC0_S  *(bsc0 + 0x01)
+#define BSC0_DLEN *(bsc0 + 0x02)
+#define BSC0_A  *(bsc0 + 0x03)
+#define BSC0_FIFO *(bsc0 + 0x04)
+
 #define BSC_C_I2CEN (1 << 15)
 #define BSC_C_INTR (1 << 10)
 #define BSC_C_INTT (1 << 9)
@@ -126,6 +133,7 @@ MODULE_LICENSE("GPL");
 
 static volatile unsigned *gpio;
 static volatile unsigned *bsc1;
+static volatile unsigned *bsc0;
 
 struct mk_config {
 	int args[MK_MAX_DEVICES];
@@ -211,9 +219,6 @@ static const int mk_teensy_input_bytes = 18;
 static const int mk_teensy_interrupt_gpio = 26;
 static const int mk_i2c_timeout_cycles = 5000;
 
-
-static const int mk_i2c_pins[] = { 2, 3 };
-
 // Map of the gpios :                     up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
 static const int mk_arcade_gpio_maps[] = { 4,  17,    27,  22,    10,    9,      25, 24, 23, 18, 15, 14 };
 // 2nd joystick on the b+ GPIOS                 up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
@@ -270,11 +275,18 @@ static int getPullUpMask(int gpioMap[]) {
 }
 
 /* I2C UTILS */
-static void i2c_init(void) {
+static void i2c_init_1(void) {
 	INP_GPIO(2);
 	SET_GPIO_ALT(2, 0);
 	INP_GPIO(3);
 	SET_GPIO_ALT(3, 0);
+}
+
+static void i2c_init_0(void) {
+	INP_GPIO(28);
+	SET_GPIO_ALT(28, 0);
+	INP_GPIO(29);
+	SET_GPIO_ALT(29, 0);
 }
 
 // timeout becomes 1 if timeout was encountered
@@ -293,8 +305,6 @@ static void wait_i2c_done(int* timeout) {
 // including the register address. len specifies the number of bytes in the buffer.
 static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short len, int* timeout) {
 	int idx;
-
-	pr_err("i2c WRITE\n");
 
 	BSC1_A = dev_addr;
 	BSC1_DLEN = len + 1; // one byte for the register address, plus the buffer length
@@ -337,12 +347,33 @@ static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len
 	} while ((!(BSC1_S & BSC_S_DONE)));
 }
 
+// Function to write data to an I2C device via the FIFO.  This doesn't refill the FIFO, so writes are limited to 16 bytes
+// including the register address. len specifies the number of bytes in the buffer.
+static void mk_teensy_i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short len, int* timeout) {
+	int idx;
+
+	pr_err("i2c WRITE\n");
+
+	BSC0_A = dev_addr;
+	BSC0_DLEN = len + 1; // one byte for the register address, plus the buffer length
+
+	BSC0_C = BSC_C_CLEAR; // clear FIFO
+	BSC0_FIFO = reg_addr; // start register address
+	for (idx = 0; idx < len; idx++)
+		BSC0_FIFO = buf[idx];
+
+	BSC0_S = CLEAR_STATUS; // Reset status bits (see #define)
+	BSC0_C = START_WRITE; // Start Write (see #define)
+
+	wait_i2c_done(timeout);
+}
+
 static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len, int* error) {
 	unsigned short bufidx;
 	int timeout = 0;
 	int interrupt = 0;
 
-	i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
+	mk_teensy_i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
 	udelay(100); // wait a bit for the teensy to lower the interrupt pin
 	interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
 
@@ -354,8 +385,8 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 		if (timeout)
 			pr_err("i2c write timed out! cancelling i2c read!\n");
 
-		BSC1_S = CLEAR_STATUS;
-		BSC1_C = BSC_C_CLEAR;
+		BSC0_S = CLEAR_STATUS;
+		BSC0_C = BSC_C_CLEAR;
 		*(error) = 1;
 	}
 	else {
@@ -366,21 +397,21 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 
 		memset(buf, 0, len); // clear the buffer
 
-		BSC1_DLEN = len;
-		BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
-		BSC1_C = START_READ; // Start Read after clearing FIFO (see #define)
+		BSC0_DLEN = len;
+		BSC0_S = CLEAR_STATUS; // Reset status bits (see #define)
+		BSC0_C = START_READ; // Start Read after clearing FIFO (see #define)
 
 		do {
 			// Wait for some data to appear in the FIFO
-			while ((BSC1_S & BSC_S_TA) && !(BSC1_S & BSC_S_RXD));
+			while ((BSC0_S & BSC_S_TA) && !(BSC0_S & BSC_S_RXD));
 
 			// Consume the FIFO
-			while ((BSC1_S & BSC_S_RXD) && (bufidx < len)) {
+			while ((BSC0_S & BSC_S_RXD) && (bufidx < len)) {
 				buf[bufidx++] = BSC1_FIFO;
 			}
-		} while ((!(BSC1_S & BSC_S_DONE)));
+		} while ((!(BSC0_S & BSC_S_DONE)));
 
-		if ((BSC1_S & BSC_S_CLKT)) {
+		if ((BSC0_S & BSC_S_CLKT)) {
 			pr_err("Clock was stretched! Teensy is not responding!\n");
 			*(error) = 1;
 		}
@@ -682,7 +713,7 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		printk("GPIO configured for pad%d\n", idx);
 	}
 	else if (pad_type == MK_ARCADE_MCP23017) {
-		i2c_init();
+		i2c_init_1();
 		udelay(1000);
 		// Put all GPIOA inputs on MCP23017 in INPUT mode
 		i2c_write(pad->i2caddr, MPC23017_GPIOA_MODE, &FF, 1, &timeout);
@@ -701,10 +732,9 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1, &timeout);
 		udelay(1000);
 	}
-	else { // if teensy, setup i2c, turn off i2c pullups and setup the interrupt pin
-		i2c_init();
+	else { // if teensy, setup i2c0 (no internal pullups) and the interrupt pin
+		i2c_init_0();
 		udelay(1000);
-		setGpioPullUpState(0x00, 0x0c); // 0x0c is the pullup mask for pins 2 and 3 (1100)
 		setGpioAsInput(mk_teensy_interrupt_gpio);
 	}
 
@@ -782,6 +812,10 @@ static int __init mk_init(void) {
 	}
 	/* Set up i2c pointer for direct register access */
 	if ((bsc1 = ioremap(BSC1_BASE, 0xB0)) == NULL) {
+		pr_err("io remap failed\n");
+		return -EBUSY;
+	}
+	if ((bsc0 = ioremap(BSC0_BASE, 0xB0)) == NULL) {
 		pr_err("io remap failed\n");
 		return -EBUSY;
 	}
