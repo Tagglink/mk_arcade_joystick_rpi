@@ -450,7 +450,7 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 
 		interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
 
-		if (interrupt)
+		//if (interrupt)
 			//mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
 	}
 
