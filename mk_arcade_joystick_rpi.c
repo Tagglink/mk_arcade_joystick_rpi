@@ -380,10 +380,10 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 		}
 	} while ((!(BSC1_S & BSC_S_DONE)));
 
-	/*if ((BSC1_S & BSC_S_CLKT)) {
+	if ((BSC1_S & BSC_S_CLKT)) {
 		pr_err("Clock was stretched! Teensy is not responding!\n");
 		*(error) = 1;
-	}*/
+	}
 }
 
 /*  ------------------------------------------------------------------------------- */
@@ -455,6 +455,12 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 			udelay(1000);
 		} while (--max_int_read_tries);
 	}
+	else {
+		pr_err("i2c write timed out");
+	}
+
+	if (!max_int_read_tries)
+		pr_err("Gave up waiting for interrupt.\n");
 
 	if (i2c_read_error || timeout || !max_int_read_tries) {
 		*(error) = 1;
