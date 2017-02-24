@@ -62,7 +62,6 @@ MODULE_LICENSE("GPL");
 #define GPIO_SET *(gpio+7)
 #define GPIO_CLR *(gpio+10)
 
-#define BSC0_BASE  (PERI_BASE + 0x205000)
 #define BSC1_BASE  (PERI_BASE + 0x804000)
 
 
@@ -101,12 +100,6 @@ MODULE_LICENSE("GPL");
 #define BSC1_A  *(bsc1 + 0x03)
 #define BSC1_FIFO *(bsc1 + 0x04)
 
-#define BSC0_C  *(bsc0 + 0x00)
-#define BSC0_S  *(bsc0 + 0x01)
-#define BSC0_DLEN *(bsc0 + 0x02)
-#define BSC0_A  *(bsc0 + 0x03)
-#define BSC0_FIFO *(bsc0 + 0x04)
-
 #define BSC_C_I2CEN (1 << 15)
 #define BSC_C_INTR (1 << 10)
 #define BSC_C_INTT (1 << 9)
@@ -132,7 +125,6 @@ MODULE_LICENSE("GPL");
 #define CLEAR_STATUS BSC_S_CLKT|BSC_S_ERR|BSC_S_DONE
 
 static volatile unsigned *gpio;
-static volatile unsigned *bsc0;
 static volatile unsigned *bsc1;
 
 struct mk_config {
@@ -282,28 +274,10 @@ static void i2c_init_1(void) {
 	SET_GPIO_ALT(3, 0);
 }
 
-static void i2c_init_0(void) {
-	INP_GPIO(28);
-	SET_GPIO_ALT(28, 0);
-	INP_GPIO(29);
-	SET_GPIO_ALT(29, 0);
-}
-
 // timeout becomes 1 if timeout was encountered
 static void wait_i2c1_done(int* timeout) {
 	int timeout_counter = mk_i2c_timeout_cycles;
 	while ((!((BSC1_S)& BSC_S_DONE)) && --timeout_counter) {
-		udelay(10);
-	}
-
-	if (timeout_counter == 0) {
-		*(timeout) = 1;
-	}
-}
-
-static void wait_i2c0_done(int* timeout) {
-	int timeout_counter = mk_i2c_timeout_cycles;
-	while ((!((BSC0_S)& BSC_S_DONE)) && --timeout_counter) {
 		udelay(10);
 	}
 
@@ -365,18 +339,18 @@ static void mk_teensy_i2c_write(char dev_addr, char reg_addr, char *buf, unsigne
 
 	pr_err("i2c WRITE\n");
 
-	BSC0_A = dev_addr;
-	BSC0_DLEN = len + 1; // one byte for the register address, plus the buffer length
+	BSC1_A = dev_addr;
+	BSC1_DLEN = len + 1; // one byte for the register address, plus the buffer length
 
-	BSC0_C = BSC_C_CLEAR; // clear FIFO
-	BSC0_FIFO = reg_addr; // start register address
+	BSC1_C = BSC_C_CLEAR; // clear FIFO
+	BSC1_FIFO = reg_addr; // start register address
 	for (idx = 0; idx < len; idx++)
-		BSC0_FIFO = buf[idx];
+		BSC1_FIFO = buf[idx];
 
-	BSC0_S = CLEAR_STATUS; // Reset status bits (see #define)
-	BSC0_C = START_WRITE; // Start Write (see #define)
+	BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
+	BSC1_C = START_WRITE; // Start Write (see #define)
 
-	wait_i2c0_done(timeout);
+	wait_i2c1_done(timeout);
 }
 
 static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len, int* error) {
@@ -396,8 +370,8 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 		if (timeout)
 			pr_err("i2c write timed out! cancelling i2c read!\n");
 
-		BSC0_S = CLEAR_STATUS;
-		BSC0_C = BSC_C_CLEAR;
+		BSC1_S = CLEAR_STATUS;
+		BSC1_C = BSC_C_CLEAR;
 		*(error) = 1;
 	}
 	else {
@@ -408,21 +382,21 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 
 		memset(buf, 0, len); // clear the buffer
 
-		BSC0_DLEN = len;
-		BSC0_S = CLEAR_STATUS; // Reset status bits (see #define)
-		BSC0_C = START_READ; // Start Read after clearing FIFO (see #define)
+		BSC1_DLEN = len;
+		BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
+		BSC1_C = START_READ; // Start Read after clearing FIFO (see #define)
 
 		do {
 			// Wait for some data to appear in the FIFO
-			while ((BSC0_S & BSC_S_TA) && !(BSC0_S & BSC_S_RXD));
+			while ((BSC1_S & BSC_S_TA) && !(BSC1_S & BSC_S_RXD));
 
 			// Consume the FIFO
-			while ((BSC0_S & BSC_S_RXD) && (bufidx < len)) {
-				buf[bufidx++] = BSC0_FIFO;
+			while ((BSC1_S & BSC_S_RXD) && (bufidx < len)) {
+				buf[bufidx++] = BSC1_FIFO;
 			}
-		} while ((!(BSC0_S & BSC_S_DONE)));
+		} while ((!(BSC1_S & BSC_S_DONE)));
 
-		if ((BSC0_S & BSC_S_CLKT)) {
+		if ((BSC1_S & BSC_S_CLKT)) {
 			pr_err("Clock was stretched! Teensy is not responding!\n");
 			*(error) = 1;
 		}
@@ -744,7 +718,7 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		udelay(1000);
 	}
 	else { // if teensy, setup i2c0 (no internal pullups) and the interrupt pin
-		i2c_init_0();
+		i2c_init_1();
 		udelay(1000);
 		setGpioAsInput(mk_teensy_interrupt_gpio);
 	}
@@ -826,10 +800,6 @@ static int __init mk_init(void) {
 		pr_err("io remap failed\n");
 		return -EBUSY;
 	}
-	if ((bsc0 = ioremap(BSC0_BASE, 0xB0)) == NULL) {
-		pr_err("io remap failed\n");
-		return -EBUSY;
-	}
 	if (mk_cfg.nargs < 1) {
 		pr_err("at least one device must be specified\n");
 		return -EINVAL;
@@ -847,7 +817,6 @@ static void __exit mk_exit(void) {
 		mk_remove(mk_base);
 
 	iounmap(gpio);
-	iounmap(bsc0);
 	iounmap(bsc1);
 }
 
