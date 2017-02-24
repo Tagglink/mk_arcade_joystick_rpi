@@ -294,7 +294,6 @@ static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short le
 	BSC1_A = dev_addr;
 	BSC1_DLEN = len + 1; // one byte for the register address, plus the buffer length
 
-	BSC1_C = BSC_C_CLEAR; // clear FIFO
 	BSC1_FIFO = reg_addr; // start register address
 	for (idx = 0; idx < len; idx++)
 		BSC1_FIFO = buf[idx];
@@ -342,7 +341,6 @@ static void mk_teensy_i2c_write(char dev_addr, char reg_addr, char *buf, unsigne
 	BSC1_A = dev_addr;
 	BSC1_DLEN = len + 1; // one byte for the register address, plus the buffer length
 
-	BSC1_C = BSC_C_CLEAR; // clear FIFO
 	BSC1_FIFO = reg_addr; // start register address
 	for (idx = 0; idx < len; idx++)
 		BSC1_FIFO = buf[idx];
@@ -442,12 +440,21 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 
 	pr_err("interrupt: %d\n", interrupt);
 
-	if (interrupt)
+	if (interrupt) {
 		mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
-	else
+	}
+	else {
 		mk_teensy_i2c_write(pad->i2caddr, TEENSY_READ_INPUT, NULL, 0, &timeout);
 
-	if (i2c_read_error || timeout) {
+		udelay(1000);
+
+		interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
+
+		if (interrupt)
+			//mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
+	}
+
+	if (i2c_read_error) {
 		*(error) = 1;
 	}
 	else {
