@@ -418,7 +418,7 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 
 			// Consume the FIFO
 			while ((BSC0_S & BSC_S_RXD) && (bufidx < len)) {
-				buf[bufidx++] = BSC1_FIFO;
+				buf[bufidx++] = BSC0_FIFO;
 			}
 		} while ((!(BSC0_S & BSC_S_DONE)));
 
