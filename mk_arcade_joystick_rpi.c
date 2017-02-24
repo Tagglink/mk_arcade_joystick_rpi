@@ -132,8 +132,8 @@ MODULE_LICENSE("GPL");
 #define CLEAR_STATUS BSC_S_CLKT|BSC_S_ERR|BSC_S_DONE
 
 static volatile unsigned *gpio;
-static volatile unsigned *bsc1;
 static volatile unsigned *bsc0;
+static volatile unsigned *bsc1;
 
 struct mk_config {
 	int args[MK_MAX_DEVICES];
@@ -847,6 +847,7 @@ static void __exit mk_exit(void) {
 		mk_remove(mk_base);
 
 	iounmap(gpio);
+	iounmap(bsc0);
 	iounmap(bsc1);
 }
 
