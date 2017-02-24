@@ -359,19 +359,9 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 	int interrupt = 0;
 
 	mk_teensy_i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
-	udelay(100); // wait a bit for the teensy to lower the interrupt pin
-	interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
 
-	if (interrupt || timeout) {
-		if (interrupt) {
-			pr_err("interrupt is high! cancelling i2c read!\n");
-			pr_err("interrupt: %d\n", interrupt);
-		}
-		if (timeout)
-			pr_err("i2c write timed out! cancelling i2c read!\n");
-
-		BSC1_S = CLEAR_STATUS;
-		BSC1_C = BSC_C_CLEAR;
+	if (timeout) {
+		pr_err("i2c write timed out! cancelling i2c read!\n");
 		*(error) = 1;
 	}
 	else {
@@ -520,6 +510,7 @@ static void mk_process_packet(struct mk *mk) {
 	struct mk_pad *pad;
 	int i;
 	int error = 0;
+	int interrupt = 0;
 
 	for (i = 0; i < MK_MAX_DEVICES; i++) {
 		pad = &mk->pads[i];
@@ -532,10 +523,13 @@ static void mk_process_packet(struct mk *mk) {
 			mk_input_report(pad, data);
 		}
 		if (pad->type == MK_TEENSY) {
-			mk_teensy_read_packet(pad, teensy_data, &error);
+			interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
+			if (!interrupt) {
+				mk_teensy_read_packet(pad, teensy_data, &error);
 
-			if (!error)
-				mk_teensy_input_report(pad, teensy_data);
+				if (!error)
+					mk_teensy_input_report(pad, teensy_data);
+			}
 		}
 	}
 
