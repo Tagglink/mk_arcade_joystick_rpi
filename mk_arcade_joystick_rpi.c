@@ -704,7 +704,7 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 	else { // if teensy, setup i2c, turn off i2c pullups and setup the interrupt pin
 		i2c_init();
 		udelay(1000);
-		setGpioPullUpState(0x00, getPullUpMask(mk_i2c_pins));
+		setGpioPullUpState(0x00, 0x0c); // 0x0c is the pullup mask for pins 2 and 3 (1100)
 		setGpioAsInput(mk_teensy_interrupt_gpio);
 	}
 
