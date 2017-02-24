@@ -208,7 +208,7 @@ static const int mk_max_arcade_buttons = 12;
 static const int mk_teensy_axis_count = 4;
 static const int mk_teensy_button_count = 14;
 static const int mk_teensy_input_bytes = 18;
-static const int mk_teensy_interrupt_gpio = 37;
+static const int mk_teensy_interrupt_gpio = 26;
 static const int mk_i2c_timeout_cycles = 5000;
 
 // Map of the gpios :                     up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
@@ -341,6 +341,10 @@ static void mk_teensy_i2c_write(char dev_addr, char reg_addr, char *buf, unsigne
 	BSC1_A = dev_addr;
 	BSC1_DLEN = len + 1; // one byte for the register address, plus the buffer length
 
+	if (!(BSC1_S & BSC_S_TXE)) {
+		BSC1_C = BSC_C_CLEAR;
+	}
+
 	BSC1_FIFO = reg_addr; // start register address
 	for (idx = 0; idx < len; idx++)
 		BSC1_FIFO = buf[idx];
@@ -441,17 +445,11 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 	pr_err("interrupt: %d\n", interrupt);
 
 	if (interrupt) {
+		mk_teensy_i2c_write(pad->i2caddr, TEENSY_READ_INPUT, NULL, 0, &timeout);
 		mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
 	}
 	else {
-		mk_teensy_i2c_write(pad->i2caddr, TEENSY_READ_INPUT, NULL, 0, &timeout);
-
-		udelay(1000);
-
-		interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
-
-		//if (interrupt)
-			//mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
+		mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
 	}
 
 	if (i2c_read_error) {
