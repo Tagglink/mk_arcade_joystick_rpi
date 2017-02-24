@@ -445,7 +445,7 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 	else {
 		mk_teensy_i2c_write(pad->i2caddr, TEENSY_READ_INPUT, NULL, 0, &timeout);
 
-		udelay(5000);
+		udelay(1000);
 
 		interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
 
