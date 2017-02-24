@@ -168,7 +168,7 @@ enum mk_type {
 	MK_MAX
 };
 
-#define MK_REFRESH_TIME HZ/100
+#define MK_REFRESH_TIME HZ/10
 
 struct mk_pad {
 	struct input_dev *dev;
