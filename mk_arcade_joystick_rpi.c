@@ -357,39 +357,30 @@ static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned
 	unsigned short bufidx;
 	int timeout = 0;
 	int interrupt = 0;
+	
+	pr_err("i2c READ\n");
 
-	mk_teensy_i2c_write(dev_addr, reg_addr, NULL, 0, &timeout);
+	bufidx = 0;
 
-	if (timeout) {
-		pr_err("i2c write timed out! cancelling i2c read!\n");
-		*(error) = 1;
-	}
-	else {
+	memset(buf, 0, len); // clear the buffer
 
-		pr_err("i2c READ\n");
+	BSC1_DLEN = len;
+	BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
+	BSC1_C = START_READ; // Start Read after clearing FIFO (see #define)
 
-		bufidx = 0;
+	do {
+		// Wait for some data to appear in the FIFO
+		while ((BSC1_S & BSC_S_TA) && !(BSC1_S & BSC_S_RXD));
 
-		memset(buf, 0, len); // clear the buffer
-
-		BSC1_DLEN = len;
-		BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
-		BSC1_C = START_READ; // Start Read after clearing FIFO (see #define)
-
-		do {
-			// Wait for some data to appear in the FIFO
-			while ((BSC1_S & BSC_S_TA) && !(BSC1_S & BSC_S_RXD));
-
-			// Consume the FIFO
-			while ((BSC1_S & BSC_S_RXD) && (bufidx < len)) {
-				buf[bufidx++] = BSC1_FIFO;
-			}
-		} while ((!(BSC1_S & BSC_S_DONE)));
-
-		if ((BSC1_S & BSC_S_CLKT)) {
-			pr_err("Clock was stretched! Teensy is not responding!\n");
-			*(error) = 1;
+		// Consume the FIFO
+		while ((BSC1_S & BSC_S_RXD) && (bufidx < len)) {
+			buf[bufidx++] = BSC1_FIFO;
 		}
+	} while ((!(BSC1_S & BSC_S_DONE)));
+
+	if ((BSC1_S & BSC_S_CLKT)) {
+		pr_err("Clock was stretched! Teensy is not responding!\n");
+		*(error) = 1;
 	}
 }
 
@@ -432,6 +423,10 @@ static void mk_gpio_read_packet(struct mk_pad * pad, unsigned char *data) {
 static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int* error) {
 	int i;
 	int i2c_read_error = 0;
+	int interrupt = 0;
+	int timeout = 0;
+
+	int max_write_tries = 500;
 
 	/*
 	 * byte 0: L-Stick X
@@ -444,9 +439,23 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 	char result[6];
 
 	pr_err("reading teensy packet...\n");
-	mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
 
-	if (i2c_read_error) {
+	interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
+
+	if (interrupt)
+		mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
+	else {
+		do {
+			mk_teensy_i2c_write(pad->i2caddr, TEENSY_READ_INPUT, NULL, 0, &timeout);
+			udelay(1000);
+			interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
+		} while (!interrupt && --max_write_tries);
+
+		if (max_write_tries != 0)
+			mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
+	}
+
+	if (i2c_read_error || max_write_tries == 0) {
 		*(error) = 1;
 	}
 	else {
@@ -523,16 +532,10 @@ static void mk_process_packet(struct mk *mk) {
 			mk_input_report(pad, data);
 		}
 		if (pad->type == MK_TEENSY) {
-			interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
-			if (interrupt) {
-				pr_err("interrupt is high! cancelling i2c read.");
-			}
-			else {
-				mk_teensy_read_packet(pad, teensy_data, &error);
+			mk_teensy_read_packet(pad, teensy_data, &error);
 
-				if (!error)
-					mk_teensy_input_report(pad, teensy_data);
-			}
+			if (!error)
+				mk_teensy_input_report(pad, teensy_data);
 		}
 	}
 
