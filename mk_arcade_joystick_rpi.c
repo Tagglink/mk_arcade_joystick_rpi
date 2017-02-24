@@ -290,9 +290,20 @@ static void i2c_init_0(void) {
 }
 
 // timeout becomes 1 if timeout was encountered
-static void wait_i2c_done(int* timeout) {
+static void wait_i2c1_done(int* timeout) {
 	int timeout_counter = mk_i2c_timeout_cycles;
 	while ((!((BSC1_S)& BSC_S_DONE)) && --timeout_counter) {
+		udelay(10);
+	}
+
+	if (timeout_counter == 0) {
+		*(timeout) = 1;
+	}
+}
+
+static void wait_i2c0_done(int* timeout) {
+	int timeout_counter = mk_i2c_timeout_cycles;
+	while ((!((BSC0_S)& BSC_S_DONE)) && --timeout_counter) {
 		udelay(10);
 	}
 
@@ -317,7 +328,7 @@ static void i2c_write(char dev_addr, char reg_addr, char *buf, unsigned short le
 	BSC1_S = CLEAR_STATUS; // Reset status bits (see #define)
 	BSC1_C = START_WRITE; // Start Write (see #define)
 
-	wait_i2c_done(timeout);
+	wait_i2c1_done(timeout);
 }
 
 // Function to read a number of bytes into a  buffer from the FIFO of the I2C controller
@@ -365,7 +376,7 @@ static void mk_teensy_i2c_write(char dev_addr, char reg_addr, char *buf, unsigne
 	BSC0_S = CLEAR_STATUS; // Reset status bits (see #define)
 	BSC0_C = START_WRITE; // Start Write (see #define)
 
-	wait_i2c_done(timeout);
+	wait_i2c0_done(timeout);
 }
 
 static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len, int* error) {
