@@ -440,23 +440,14 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 
 	interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
 
-	/*if (interrupt)
+	pr_err("interrupt: %d\n", interrupt);
+
+	if (interrupt)
 		mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
-	else {
+	else
 		mk_teensy_i2c_write(pad->i2caddr, TEENSY_READ_INPUT, NULL, 0, &timeout);
 
-		udelay(1000);
-
-		interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
-
-		if (!timeout && interrupt)
-			mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
-	}*/
-
-	mk_teensy_i2c_write(pad->i2caddr, TEENSY_READ_INPUT, NULL, 0, &timeout);
-	mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
-
-	if (i2c_read_error) {
+	if (i2c_read_error || timeout) {
 		*(error) = 1;
 	}
 	else {
