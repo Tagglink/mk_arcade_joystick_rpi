@@ -474,12 +474,12 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 
 		// read 8 buttons in the 5th byte
 		for (i = 4; i < 12; i++) {
-			data[i] = (result[4] >> (i - 4)) & 0x1;
+			data[i] = (result[4] << (i - 4)) & 0x80;
 		}
 
 		// read 8 buttons in the 6th byte
 		for (i = 12; i < 20; i++) {
-			data[i] = (result[5] >> (i - 12)) & 0x1;
+			data[i] = (result[5] << (i - 12)) & 0x80;
 		}
 
 		pr_err("teensy packet read!\n");
