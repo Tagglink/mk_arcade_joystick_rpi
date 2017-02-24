@@ -211,6 +211,9 @@ static const int mk_teensy_input_bytes = 18;
 static const int mk_teensy_interrupt_gpio = 26;
 static const int mk_i2c_timeout_cycles = 5000;
 
+
+static const int mk_i2c_pins[] = { 2, 3 };
+
 // Map of the gpios :                     up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
 static const int mk_arcade_gpio_maps[] = { 4,  17,    27,  22,    10,    9,      25, 24, 23, 18, 15, 14 };
 // 2nd joystick on the b+ GPIOS                 up, down, left, right, start, select, a,  b,  tr, y,  x,  tl
@@ -241,10 +244,10 @@ static const char *mk_names[] = {
 };
 
 /* GPIO UTILS */
-static void setGpioPullUps(int pullUps) {
-	*(gpio + 37) = 0x02;
+static void setGpioPullUpState(int state, int gpioMask) {
+	*(gpio + 37) = state;
 	udelay(10);
-	*(gpio + 38) = pullUps;
+	*(gpio + 38) = gpioMask;
 	udelay(10);
 	*(gpio + 37) = 0x00;
 	*(gpio + 38) = 0x00;
@@ -336,7 +339,6 @@ static void i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len
 
 static void mk_teensy_i2c_read(char dev_addr, char reg_addr, char *buf, unsigned short len, int* error) {
 	unsigned short bufidx;
-	unsigned short write_max_tries = 10;
 	int timeout = 0;
 	int interrupt = 0;
 
@@ -676,7 +678,7 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 				setGpioAsInput(pad->gpio_maps[i]);
 			}
 		}
-		setGpioPullUps(getPullUpMask(pad->gpio_maps));
+		setGpioPullUpState(0x02, getPullUpMask(pad->gpio_maps));
 		printk("GPIO configured for pad%d\n", idx);
 	}
 	else if (pad_type == MK_ARCADE_MCP23017) {
@@ -699,11 +701,11 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		i2c_write(pad->i2caddr, MPC23017_GPIOB_PULLUPS_MODE, &FF, 1, &timeout);
 		udelay(1000);
 	}
-	else { // if teensy, setup i2c and the interrupt gpio
+	else { // if teensy, setup i2c, turn off i2c pullups and setup the interrupt pin
 		i2c_init();
 		udelay(1000);
+		setGpioPullUpState(0x00, getPullUpMask(mk_i2c_pins));
 		setGpioAsInput(mk_teensy_interrupt_gpio);
-		udelay(1000);
 	}
 
 	err = input_register_device(pad->dev);
