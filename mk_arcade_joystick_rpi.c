@@ -725,6 +725,7 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 		i2c_init_1();
 		udelay(1000);
 		setGpioAsInput(mk_teensy_interrupt_gpio);
+		setGpioPullUpState(0x01, (1 << mk_teensy_interrupt_gpio));
 	}
 
 	err = input_register_device(pad->dev);
