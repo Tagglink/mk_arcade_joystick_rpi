@@ -501,7 +501,7 @@ static void mk_teensy_input_report(struct mk_pad * pad, unsigned char * data) {
 	input_report_abs(dev, ABS_X, lx);
 	input_report_abs(dev, ABS_Y, ly);
 	input_report_abs(dev, ABS_RX, rx);
-	input_report_abs(dev, ABS_RY, ry));
+	input_report_abs(dev, ABS_RY, ry);
 
 	pr_err("reporting axis ABS_X as %d\n", lx);
 	pr_err("reporting axis ABS_Y as %d\n", ly);
