@@ -80,15 +80,7 @@ MODULE_LICENSE("GPL");
  */
 #define TEENSY_READ_INPUT      0x10
 #define TEENSY_BOUNCE_INTERVAL 0x20
-#define TEENSY_CALIB_JS1X_MAX  0x30
-#define TEENSY_CALIB_JS1Y_MAX  0x40
-#define TEENSY_CALIB_JS1X_MIN  0x50
-#define TEENSY_CALIB_JS1Y_MIN  0x60
-#define TEENSY_CALIB_JS2X_MAX  0x70
-#define TEENSY_CALIB_JS2Y_MAX  0x80
-#define TEENSY_CALIB_JS2X_MIN  0x90
-#define TEENSY_CALIB_JS2Y_MIN  0xA0
-#define TEENSY_I2C_CLOCKRATE   0xB0
+#define TEENSY_I2C_CLOCKRATE   0x30
 
  /*
  * Defines for I2C peripheral (aka BSC, or Broadcom Serial Controller)
@@ -205,9 +197,8 @@ static struct mk *mk_base;
 
 static const int mk_max_arcade_buttons = 12;
 
-static const int mk_teensy_axis_count = 4;
-static const int mk_teensy_button_count = 14;
-static const int mk_teensy_input_bytes = 18;
+static const int mk_teensy_button_count = 16;
+static const int mk_teensy_input_bytes = 24;
 static const int mk_teensy_interrupt_gpio = 26;
 static const int mk_i2c_timeout_cycles = 5000;
 
@@ -231,9 +222,9 @@ static const short mk_arcade_gpio_btn[] = {
 // Teensy axes (4): L-Stick X, L-Stick Y, R-Stick X, R-Stick Y
 //                  ABS_X,     ABS_Y,     ABS_RX,    ABS_RY
 
-// Teensy buttons (14): A, B, X, Y, L, R, Select, Start, L-Stick press, R-Stick press, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down
+// Teensy buttons (16): A, B, X, Y, L, R, Start, Select, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down, L-Trigger, R-Trigger, L-Stick press, R-Stick press, 
 static const short mk_teensy_buttons[] = {
-	BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR, BTN_SELECT, BTN_START, BTN_THUMBL, BTN_THUMBR, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_DPAD_UP, BTN_DPAD_DOWN
+	BTN_A, BTN_B, BTN_X, BTN_Y, BTN_TL, BTN_TR, BTN_START, BTN_SELECT, BTN_DPAD_LEFT, BTN_DPAD_RIGHT, BTN_DPAD_UP, BTN_DPAD_DOWN, BTN_TL2, BTN_TR2, BTN_THUMBL, BTN_THUMBR
 };
 
 static const char *mk_names[] = {
@@ -437,7 +428,7 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 	 * byte 4: A, B, X, Y, L, R, Select, Start
 	 * byte 5: L-Stick, R-Stick, D-Pad Left, D-Pad Right, D-Pad Up, D-Pad Down
 	 */
-	char result[6];
+	char result[10];
 
 	pr_err("reading teensy packet...\n");
 
@@ -448,7 +439,7 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 			interrupt = GPIO_READ(mk_teensy_interrupt_gpio);
 
 			if (interrupt) {
-				mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 6, &i2c_read_error);
+				mk_teensy_i2c_read(pad->i2caddr, TEENSY_READ_INPUT, result, 10, &i2c_read_error);
 				break;
 			}
 
@@ -467,19 +458,19 @@ static void mk_teensy_read_packet(struct mk_pad * pad, unsigned char *data, int*
 	}
 	else {
 
-		// read the first four bytes as axes
-		for (i = 0; i < 4; i++) {
+		// read the first eight bytes as axes
+		for (i = 0; i < 8; i++) {
 			data[i] = result[i];
 		}
 
-		// read 8 buttons in the 5th byte
-		for (i = 4; i < 12; i++) {
-			data[i] = (result[4] << (i - 4)) & 0x80;
+		// read 8 buttons in the 9th byte
+		for (i = 8; i < 16; i++) {
+			data[i] = (result[8] << (i - 8)) & 0x80;
 		}
 
-		// read 8 buttons in the 6th byte
-		for (i = 12; i < 20; i++) {
-			data[i] = (result[5] << (i - 12)) & 0x80;
+		// read 8 buttons in the 10th byte
+		for (i = 16; i < 24; i++) {
+			data[i] = (result[9] << (i - 16)) & 0x80;
 		}
 
 		pr_err("teensy packet read!\n");
@@ -500,21 +491,27 @@ static void mk_input_report(struct mk_pad * pad, unsigned char * data) {
 static void mk_teensy_input_report(struct mk_pad * pad, unsigned char * data) {
 	struct input_dev * dev = pad->dev;
 	int j;
-	// send joystick data to input device
-	input_report_abs(dev, ABS_X, data[0]);
-	input_report_abs(dev, ABS_Y, data[1]);
-	input_report_abs(dev, ABS_RX, data[2]);
-	input_report_abs(dev, ABS_RY, data[3]);
 
-	pr_err("reporting axis ABS_X as %d\n", data[0]);
-	pr_err("reporting axis ABS_Y as %d\n", data[1]);
-	pr_err("reporting axis ABS_RX as %d\n", data[2]);
-	pr_err("reporting axis ABS_RY as %d\n", data[3]);
+	int lx = (data[1] << 8) | data[0];
+	int ly = (data[3] << 8) | data[2];
+	int rx = (data[5] << 8) | data[4];
+	int ry = (data[7] << 8) | data[6];
+
+	// send joystick data to input device
+	input_report_abs(dev, ABS_X, lx);
+	input_report_abs(dev, ABS_Y, ly);
+	input_report_abs(dev, ABS_RX, rx);
+	input_report_abs(dev, ABS_RY, ry));
+
+	pr_err("reporting axis ABS_X as %d\n", lx);
+	pr_err("reporting axis ABS_Y as %d\n", ly);
+	pr_err("reporting axis ABS_RX as %d\n", rx);
+	pr_err("reporting axis ABS_RY as %d\n", ry);
 
 	// send button data to input device
-	for (j = 4; j < mk_teensy_input_bytes; j++) {
-		input_report_key(dev, mk_teensy_buttons[j - 4], data[j]);
-		pr_err("reporting key %d as %d\n", (j - 4), data[j]);
+	for (j = 8; j < mk_teensy_input_bytes; j++) {
+		input_report_key(dev, mk_teensy_buttons[j - 8], data[j]);
+		pr_err("reporting key %d as %d\n", (j - 8), data[j]);
 	}
 	input_sync(dev);
 }
@@ -657,11 +654,11 @@ static int __init mk_setup_pad(struct mk *mk, int idx, int pad_type_arg) {
 	else { // if teensy, we are using two joysticks and more buttons
 	 // setup left stick axes
 		for (i = 0; i < 2; i++)
-			input_set_abs_params(input_dev, ABS_X + i, 0, 255, 4, 8);
+			input_set_abs_params(input_dev, ABS_X + i, 0, 1023, 16, 32);
 
 		// setup right stick axes
 		for (i = 0; i < 2; i++)
-			input_set_abs_params(input_dev, ABS_RX + i, 0, 255, 4, 8);
+			input_set_abs_params(input_dev, ABS_RX + i, 0, 1023, 16, 32);
 
 		// setup buttons
 		for (i = 0; i < mk_teensy_button_count; i++) {
